@@ -200,14 +200,16 @@ func (k *keyStore) oobHandler(fromKey, toKey ed25519.PublicKey, data []byte) {
 }
 
 func (k *keyStore) sendKeyLookup(partial ed25519.PublicKey) {
-	sig := ed25519.Sign(k.core.PrivateKey(), partial[:])
-	bs := append([]byte{typeKeyLookup}, sig...)
+	var sig [64]byte
+	k.core.SecretKey().SignED25519(&sig, partial[:])
+	bs := append([]byte{typeKeyLookup}, sig[:]...)
 	_ = k.core.SendOutOfBand(partial, bs)
 }
 
 func (k *keyStore) sendKeyResponse(dest ed25519.PublicKey) {
-	sig := ed25519.Sign(k.core.PrivateKey(), dest[:])
-	bs := append([]byte{typeKeyResponse}, sig...)
+	var sig [64]byte
+	k.core.SecretKey().SignED25519(&sig, dest[:])
+	bs := append([]byte{typeKeyResponse}, sig[:]...)
 	_ = k.core.SendOutOfBand(dest, bs)
 }
 

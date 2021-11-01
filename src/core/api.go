@@ -8,6 +8,7 @@ import (
 	//"fmt"
 	"net"
 	"net/url"
+
 	//"sort"
 	//"time"
 
@@ -128,7 +129,7 @@ func (c *Core) Listen(u *url.URL, sintf string) (*TcpListener, error) {
 // that application also implements either VPN functionality or deals with IP
 // packets specifically.
 func (c *Core) Address() net.IP {
-	addr := net.IP(address.AddrForKey(c.public)[:])
+	addr := net.IP(address.AddrForKey(c.secKey.PK[:])[:])
 	return addr
 }
 
@@ -138,7 +139,7 @@ func (c *Core) Address() net.IP {
 // that application also implements either VPN functionality or deals with IP
 // packets specifically.
 func (c *Core) Subnet() net.IPNet {
-	subnet := address.SubnetForKey(c.public)[:]
+	subnet := address.SubnetForKey(c.secKey.PK[:])[:]
 	subnet = append(subnet, 0, 0, 0, 0, 0, 0, 0, 0)
 	return net.IPNet{IP: subnet, Mask: net.CIDRMask(64, 128)}
 }
@@ -236,7 +237,7 @@ func (c *Core) CallPeer(u *url.URL, sintf string) error {
 }
 
 func (c *Core) PublicKey() ed25519.PublicKey {
-	return c.public
+	return c.secKey.PK[:]
 }
 
 // Hack to get the admin stuff working, TODO something cleaner

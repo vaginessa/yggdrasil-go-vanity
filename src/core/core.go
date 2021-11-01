@@ -1,14 +1,15 @@
 package core
 
 import (
+	"bytes"
 	"context"
-	"crypto/ed25519"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/url"
+	"strings"
 	"time"
 
 	iwe "github.com/Arceliar/ironwood/encrypted"
@@ -30,8 +31,7 @@ type Core struct {
 	phony.Inbox
 	*iwe.PacketConn
 	config       *config.NodeConfig // Config
-	secret       ed25519.PrivateKey
-	public       ed25519.PublicKey
+	secKey       iwt.SecretKey
 	links        links
 	proto        protoHandler
 	log          *log.Logger
@@ -51,19 +51,46 @@ func (c *Core) _init() error {
 		c.log = log.New(ioutil.Discard, "", 0)
 	}
 
-	sigPriv, err := hex.DecodeString(c.config.PrivateKey)
+	if strings.HasPrefix(c.config.PrivateKey, "lr:") {
+		lr, err := hex.DecodeString(c.config.PrivateKey)
+		if err != nil {
+			return fmt.Errorf("error decoding PrivateKey: %w", err)
+		}
+		if len(lr) != 64 {
+			return errors.New("PrivateKey is incorrect length")
+		}
+		sk, err := iwt.NewSecretKeyFromLR((*[64]byte)(lr))
+		if err != nil {
+			return fmt.Errorf("error parsing PrivateKey: %w", err)
+		}
+		c.secKey = sk
+	} else {
+		seedpk, err := hex.DecodeString(c.config.PrivateKey)
+		if err != nil {
+			return fmt.Errorf("error decoding PrivateKey: %w", err)
+		}
+		if len(seedpk) != 64 {
+			return errors.New("PrivateKey is incorrect length")
+		}
+		sk, err := iwt.NewSecretKeyFromSeedPK((*[64]byte)(seedpk))
+		if err != nil {
+			return fmt.Errorf("error parsing PrivateKey: %w", err)
+		}
+		c.secKey = sk
+	}
+
+	pk, err := hex.DecodeString(c.config.PublicKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("error decoding PublicKey: %w", err)
 	}
-	if len(sigPriv) < ed25519.PrivateKeySize {
-		return errors.New("PrivateKey is incorrect length")
+	if len(pk) != 32 {
+		return errors.New("PublicKey is incorrect length")
+	}
+	if !bytes.Equal(pk, c.secKey.PK[:]) {
+		return errors.New("PublicKey does not match PrivateKey")
 	}
 
-	c.secret = ed25519.PrivateKey(sigPriv)
-	c.public = c.secret.Public().(ed25519.PublicKey)
-	// TODO check public against current.PublicKey, error if they don't match
-
-	c.PacketConn, err = iwe.NewPacketConn(c.secret)
+	c.PacketConn, err = iwe.NewPacketConn(c.secKey)
 	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
 	c.proto.init(c)
 	if err := c.proto.nodeinfo.setNodeInfo(c.config.NodeInfo, c.config.NodeInfoPrivacy); err != nil {

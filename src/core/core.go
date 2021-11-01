@@ -40,6 +40,36 @@ type Core struct {
 	ctxCancel    context.CancelFunc
 }
 
+func ParsePrivateKey(str string) (iwt.SecretKey, error) {
+	if strings.HasPrefix(str, "lr:") {
+		lr, err := hex.DecodeString(str)
+		if err != nil {
+			return iwt.SecretKey{}, fmt.Errorf("error decoding PrivateKey: %w", err)
+		}
+		if len(lr) != 64 {
+			return iwt.SecretKey{}, errors.New("PrivateKey is incorrect length")
+		}
+		sk, err := iwt.NewSecretKeyFromLR((*[64]byte)(lr))
+		if err != nil {
+			return iwt.SecretKey{}, fmt.Errorf("error parsing PrivateKey: %w", err)
+		}
+		return sk, nil
+	} else {
+		seedpk, err := hex.DecodeString(str)
+		if err != nil {
+			return iwt.SecretKey{}, fmt.Errorf("error decoding PrivateKey: %w", err)
+		}
+		if len(seedpk) != 64 {
+			return iwt.SecretKey{}, errors.New("PrivateKey is incorrect length")
+		}
+		sk, err := iwt.NewSecretKeyFromSeedPK((*[64]byte)(seedpk))
+		if err != nil {
+			return iwt.SecretKey{}, fmt.Errorf("error parsing PrivateKey: %w", err)
+		}
+		return sk, nil
+	}
+}
+
 func (c *Core) _init() error {
 	// TODO separate init and start functions
 	//  Init sets up structs
@@ -51,32 +81,10 @@ func (c *Core) _init() error {
 		c.log = log.New(ioutil.Discard, "", 0)
 	}
 
-	if strings.HasPrefix(c.config.PrivateKey, "lr:") {
-		lr, err := hex.DecodeString(c.config.PrivateKey)
-		if err != nil {
-			return fmt.Errorf("error decoding PrivateKey: %w", err)
-		}
-		if len(lr) != 64 {
-			return errors.New("PrivateKey is incorrect length")
-		}
-		sk, err := iwt.NewSecretKeyFromLR((*[64]byte)(lr))
-		if err != nil {
-			return fmt.Errorf("error parsing PrivateKey: %w", err)
-		}
-		c.secKey = sk
-	} else {
-		seedpk, err := hex.DecodeString(c.config.PrivateKey)
-		if err != nil {
-			return fmt.Errorf("error decoding PrivateKey: %w", err)
-		}
-		if len(seedpk) != 64 {
-			return errors.New("PrivateKey is incorrect length")
-		}
-		sk, err := iwt.NewSecretKeyFromSeedPK((*[64]byte)(seedpk))
-		if err != nil {
-			return fmt.Errorf("error parsing PrivateKey: %w", err)
-		}
-		c.secKey = sk
+	var err error
+	c.secKey, err = ParsePrivateKey(c.config.PrivateKey)
+	if err != nil {
+		return err
 	}
 
 	pk, err := hex.DecodeString(c.config.PublicKey)

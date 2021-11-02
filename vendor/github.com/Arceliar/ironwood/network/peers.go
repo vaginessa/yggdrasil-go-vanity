@@ -224,7 +224,7 @@ func (p *peer) _handleTree(bs []byte) error {
 
 func (p *peer) sendTree(from phony.Actor, info *treeInfo) {
 	p.Act(from, func() {
-		info = info.add(p.peers.core.crypto.privateKey, p)
+		info = info.add(&p.peers.core.crypto.secretKey, p)
 		p.writer.sendPacket(wireProtoTree, info)
 	})
 }

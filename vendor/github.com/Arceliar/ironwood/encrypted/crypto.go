@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 
 	"github.com/Arceliar/ironwood/encrypted/internal/e2c"
+	"github.com/Arceliar/ironwood/types"
 )
 
 /********
@@ -43,10 +44,12 @@ type edPub [edPubSize]byte
 type edPriv [edPrivSize]byte
 type edSig [edSigSize]byte
 
-func edSign(msg []byte, priv *edPriv) *edSig {
-	var sig edSig
-	copy(sig[:], ed25519.Sign(priv[:], msg))
-	return &sig
+type edSec types.SecretKey
+
+func edSign(msg []byte, priv *edSec) *edSig {
+	var sig [64]byte
+	((*types.SecretKey)(priv)).SignED25519(&sig, msg)
+	return (*edSig)(&sig)
 }
 
 func edCheck(msg []byte, sig *edSig, pub *edPub) bool {
@@ -59,7 +62,10 @@ func (pub *edPub) asKey() ed25519.PublicKey {
 
 func (pub *edPub) toBox() (*boxPub, error) {
 	var c boxPub
-	e := e2c.Ed25519PublicKeyToCurve25519(pub.asKey())
+	e, err := e2c.Ed25519PublicKeyToCurve25519(pub.asKey())
+	if err != nil {
+		return nil, err
+	}
 	copy(c[:], e)
 	return &c, nil
 }
@@ -76,6 +82,19 @@ func (priv *edPriv) pub() *edPub {
 	pub := new(edPub)
 	copy(pub[:], pk[:])
 	return pub
+}
+
+func (sec *edSec) pub() *edPub {
+	pub := new(edPub)
+	copy(pub[:], sec.PK[:])
+	return pub
+}
+
+func (sec *edSec) toBox() *boxPriv {
+	var c boxPriv
+	e := e2c.Ed25519SecretKeyLToCurve25519(&sec.L)
+	copy(c[:], e)
+	return &c
 }
 
 /*******

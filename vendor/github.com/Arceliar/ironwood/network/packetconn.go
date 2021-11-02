@@ -28,7 +28,7 @@ type PacketConn struct {
 }
 
 // NewPacketConn returns a *PacketConn struct which implements the types.PacketConn interface.
-func NewPacketConn(secret ed25519.PrivateKey) (*PacketConn, error) {
+func NewPacketConn(secret types.SecretKey) (*PacketConn, error) {
 	c := new(core)
 	if err := c.init(secret); err != nil {
 		return nil, err
@@ -219,9 +219,8 @@ func (pc *PacketConn) IsClosed() bool {
 }
 
 // PrivateKey() returns the ed25519.PrivateKey used to initialize the PacketConn.
-func (pc *PacketConn) PrivateKey() ed25519.PrivateKey {
-	sk := pc.core.crypto.privateKey
-	return ed25519.PrivateKey(sk[:])
+func (pc *PacketConn) SecretKey() *types.SecretKey {
+	return &pc.core.crypto.secretKey
 }
 
 // MTU returns the maximum transmission unit of the PacketConn, i.e. maximum safe message size to send over the network.

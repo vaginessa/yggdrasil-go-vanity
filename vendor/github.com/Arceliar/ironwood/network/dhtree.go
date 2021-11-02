@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	"github.com/Arceliar/ironwood/types"
 	"github.com/Arceliar/phony"
 )
 
@@ -465,7 +466,7 @@ func (t *dhtree) _newSetup(token *dhtSetupToken) *dhtSetup {
 	setup := new(dhtSetup)
 	setup.seq = t.seq
 	setup.token = *token
-	setup.sig = t.core.crypto.privateKey.sign(setup.bytesForSig())
+	setup.sig = sign(&t.core.crypto.secretKey, setup.bytesForSig())
 	return setup
 }
 
@@ -665,7 +666,7 @@ func (t *dhtree) _getLabel() *treeLabel {
 	for _, hop := range t.self.hops {
 		label.path = append(label.path, hop.port)
 	}
-	label.sig = t.core.crypto.privateKey.sign(label.bytesForSig())
+	label.sig = sign(&t.core.crypto.secretKey, label.bytesForSig())
 	return label
 }
 
@@ -673,7 +674,7 @@ func (t *dhtree) _getToken(source publicKey) *dhtSetupToken {
 	token := new(dhtSetupToken)
 	token.source = source
 	token.dest = *t._getLabel()
-	token.sig = t.core.crypto.privateKey.sign(token.bytesForSig())
+	token.sig = sign(&t.core.crypto.secretKey, token.bytesForSig())
 	return token
 }
 
@@ -745,7 +746,7 @@ func (info *treeInfo) checkLoops() bool {
 	return !keys[key]
 }
 
-func (info *treeInfo) add(priv privateKey, next *peer) *treeInfo {
+func (info *treeInfo) add(priv *types.SecretKey, next *peer) *treeInfo {
 	var bs []byte
 	bs = append(bs, info.root[:]...)
 	seq := make([]byte, 8)
@@ -757,7 +758,7 @@ func (info *treeInfo) add(priv privateKey, next *peer) *treeInfo {
 	}
 	bs = append(bs, next.key[:]...)
 	bs = wireEncodeUint(bs, uint64(next.port))
-	sig := priv.sign(bs)
+	sig := sign(priv, bs)
 	hop := treeHop{next: next.key, port: next.port, sig: sig}
 	newInfo := *info
 	newInfo.hops = nil

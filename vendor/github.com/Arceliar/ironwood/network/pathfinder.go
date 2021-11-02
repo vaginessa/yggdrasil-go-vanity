@@ -38,7 +38,7 @@ func (pf *pathfinder) _getNotify(dest publicKey, keepAlive bool) *pathNotify {
 		var bs []byte
 		bs = append(bs, dest[:]...)
 		bs = append(bs, ibytes...)
-		n.sig = pf.dhtree.core.crypto.privateKey.sign(bs)
+		n.sig = sign(&pf.dhtree.core.crypto.secretKey, bs)
 		info.ntime = time.Now()
 		return n
 	}

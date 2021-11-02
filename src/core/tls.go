@@ -34,16 +34,13 @@ func (t *tcptls) init(tcp *tcp) {
 		name:    "tls",
 	}
 
-	edpriv := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
-	copy(edpriv[:], tcp.links.core.secret[:])
-
 	certBuf := &bytes.Buffer{}
 
 	// TODO: because NotAfter is finite, we should add some mechanism to regenerate the certificate and restart the listeners periodically for nodes with very high uptimes. Perhaps regenerate certs and restart listeners every few months or so.
 	pubtemp := x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
-			CommonName: hex.EncodeToString(tcp.links.core.public[:]),
+			CommonName: hex.EncodeToString(tcp.links.core.secKey.PK[:]),
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(time.Hour * 24 * 365),
@@ -52,7 +49,7 @@ func (t *tcptls) init(tcp *tcp) {
 		BasicConstraintsValid: true,
 	}
 
-	derbytes, err := x509.CreateCertificate(rand.Reader, &pubtemp, &pubtemp, edpriv.Public(), edpriv)
+	derbytes, err := x509.CreateCertificate(rand.Reader, &pubtemp, &pubtemp, tcp.links.core.secKey.Public(), &tcp.links.core.secKey)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
@@ -69,7 +66,7 @@ func (t *tcptls) init(tcp *tcp) {
 		Certificates: []tls.Certificate{
 			{
 				Certificate: [][]byte{derbytes},
-				PrivateKey:  edpriv,
+				PrivateKey:  tcp.links.core.secKey,
 			},
 		},
 		InsecureSkipVerify: true,

@@ -1,16 +1,18 @@
 package core
 
 import (
+	"bytes"
 	"context"
-	"crypto/ed25519"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"strings"
 	"time"
 
 	iw "github.com/Arceliar/ironwood/encrypted"
+	iwt "github.com/Arceliar/ironwood/types"
 	"github.com/Arceliar/phony"
 	"github.com/gologme/log"
 
@@ -28,8 +30,7 @@ type Core struct {
 	phony.Inbox
 	pc           *iw.PacketConn
 	config       *config.NodeConfig // Config
-	secret       ed25519.PrivateKey
-	public       ed25519.PublicKey
+	secKey       iwt.SecretKey
 	links        links
 	proto        protoHandler
 	store        keyStore
@@ -37,6 +38,61 @@ type Core struct {
 	addPeerTimer *time.Timer
 	ctx          context.Context
 	ctxCancel    context.CancelFunc
+}
+
+func ParseKeys(privateKey, publicKey string) (_ iwt.SecretKey, err error) {
+
+	var sk iwt.SecretKey
+
+	if strings.HasPrefix(privateKey, "lr:") {
+		var lr []byte
+		lr, err = hex.DecodeString(privateKey[len("lr:"):])
+		if err != nil {
+			err = fmt.Errorf("error decoding PrivateKey: %w", err)
+			return
+		}
+		if len(lr) != 64 {
+			err = errors.New("PrivateKey has incorrect length")
+			return
+		}
+		sk, err = iwt.NewSecretKeyFromLR((*[64]byte)(lr))
+		if err != nil {
+			err = fmt.Errorf("error parsing PrivateKey: %w", err)
+			return
+		}
+	} else {
+		var seedpk []byte
+		seedpk, err = hex.DecodeString(privateKey)
+		if err != nil {
+			err = fmt.Errorf("error decoding PrivateKey: %w", err)
+			return
+		}
+		if len(seedpk) != 64 {
+			err = errors.New("PrivateKey has incorrect length")
+			return
+		}
+		sk, err = iwt.NewSecretKeyFromSeedPK((*[64]byte)(seedpk))
+		if err != nil {
+			err = fmt.Errorf("error parsing PrivateKey: %w", err)
+			return
+		}
+	}
+
+	pk, err := hex.DecodeString(publicKey)
+	if err != nil {
+		err = fmt.Errorf("error decoding PublicKey: %w", err)
+		return
+	}
+	if len(pk) != 32 {
+		err = errors.New("PublicKey has incorrect length")
+		return
+	}
+	if !bytes.Equal(pk, sk.PK[:]) {
+		err = errors.New("PublicKey does not match PrivateKey")
+		return
+	}
+
+	return sk, nil
 }
 
 func (c *Core) _init() error {
@@ -50,19 +106,13 @@ func (c *Core) _init() error {
 		c.log = log.New(ioutil.Discard, "", 0)
 	}
 
-	sigPriv, err := hex.DecodeString(c.config.PrivateKey)
+	var err error
+	c.secKey, err = ParseKeys(c.config.PrivateKey, c.config.PublicKey)
 	if err != nil {
 		return err
 	}
-	if len(sigPriv) < ed25519.PrivateKeySize {
-		return errors.New("PrivateKey is incorrect length")
-	}
 
-	c.secret = ed25519.PrivateKey(sigPriv)
-	c.public = c.secret.Public().(ed25519.PublicKey)
-	// TODO check public against current.PublicKey, error if they don't match
-
-	c.pc, err = iw.NewPacketConn(c.secret)
+	c.pc, err = iw.NewPacketConn(c.secKey)
 	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
 	c.store.init(c)
 	c.proto.init(c)

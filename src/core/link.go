@@ -135,7 +135,7 @@ func (intf *link) handler() (chan struct{}, error) {
 	// TODO split some of this into shorter functions, so it's easier to read, and for the FIXME duplicate peer issue mentioned later
 	defer intf.conn.Close()
 	meta := version_getBaseMetadata()
-	meta.key = intf.links.core.public
+	meta.key = intf.links.core.secKey.PK[:]
 	metaBytes := meta.encode()
 	// TODO timeouts on send/recv (goroutine for send/recv, channel select w/ timer)
 	var err error

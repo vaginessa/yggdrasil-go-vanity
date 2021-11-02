@@ -298,8 +298,9 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 	}
 	// Have we been asked for the node address yet? If so, print it and then stop.
 	getNodeKey := func() ed25519.PublicKey {
-		if pubkey, err := hex.DecodeString(cfg.PrivateKey); err == nil {
-			return ed25519.PrivateKey(pubkey).Public().(ed25519.PublicKey)
+		sk, err := core.ParseKeys(cfg.PrivateKey, cfg.PublicKey)
+		if err == nil {
+			return ed25519.PublicKey(sk.PK[:])
 		}
 		return nil
 	}

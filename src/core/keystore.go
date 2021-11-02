@@ -47,8 +47,8 @@ type buffer struct {
 
 func (k *keyStore) init(core *Core) {
 	k.core = core
-	k.address = *address.AddrForKey(k.core.public)
-	k.subnet = *address.SubnetForKey(k.core.public)
+	k.address = *address.AddrForKey(k.core.secKey.PK[:])
+	k.subnet = *address.SubnetForKey(k.core.secKey.PK[:])
 	if err := k.core.pc.SetOutOfBandHandler(k.oobHandler); err != nil {
 		err = fmt.Errorf("tun.core.SetOutOfBandHander: %w", err)
 		panic(err)
@@ -191,14 +191,16 @@ func (k *keyStore) oobHandler(fromKey, toKey ed25519.PublicKey, data []byte) {
 }
 
 func (k *keyStore) sendKeyLookup(partial ed25519.PublicKey) {
-	sig := ed25519.Sign(k.core.secret, partial[:])
-	bs := append([]byte{typeKeyLookup}, sig...)
+	var sig [64]byte
+	k.core.secKey.SignED25519(&sig, partial)
+	bs := append([]byte{typeKeyLookup}, sig[:]...)
 	_ = k.core.pc.SendOutOfBand(partial, bs)
 }
 
 func (k *keyStore) sendKeyResponse(dest ed25519.PublicKey) {
-	sig := ed25519.Sign(k.core.secret, dest[:])
-	bs := append([]byte{typeKeyResponse}, sig...)
+	var sig [64]byte
+	k.core.secKey.SignED25519(&sig, dest)
+	bs := append([]byte{typeKeyResponse}, sig[:]...)
 	_ = k.core.pc.SendOutOfBand(dest, bs)
 }
 

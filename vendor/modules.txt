@@ -1,0 +1,100 @@
+# github.com/Arceliar/ironwood v0.0.0-20210619124114-6ad55cae5031
+## explicit
+github.com/Arceliar/ironwood/encrypted
+github.com/Arceliar/ironwood/encrypted/internal/e2c
+github.com/Arceliar/ironwood/network
+github.com/Arceliar/ironwood/types
+# github.com/Arceliar/phony v0.0.0-20210209235338-dde1a8dca979
+## explicit
+github.com/Arceliar/phony
+# github.com/VividCortex/ewma v1.2.0
+## explicit
+github.com/VividCortex/ewma
+# github.com/cheggaaa/pb/v3 v3.0.8
+## explicit
+github.com/cheggaaa/pb/v3
+github.com/cheggaaa/pb/v3/termutil
+# github.com/fatih/color v1.12.0
+## explicit
+github.com/fatih/color
+# github.com/gologme/log v1.2.0
+## explicit
+github.com/gologme/log
+# github.com/hashicorp/go-syslog v1.0.0
+## explicit
+github.com/hashicorp/go-syslog
+# github.com/hjson/hjson-go v3.1.0+incompatible
+## explicit
+github.com/hjson/hjson-go
+# github.com/kardianos/minwinsvc v1.0.0
+## explicit
+github.com/kardianos/minwinsvc
+# github.com/mattn/go-colorable v0.1.8
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.13
+## explicit
+github.com/mattn/go-isatty
+# github.com/mattn/go-runewidth v0.0.13
+## explicit
+github.com/mattn/go-runewidth
+# github.com/mitchellh/mapstructure v1.4.1
+## explicit
+github.com/mitchellh/mapstructure
+# github.com/rivo/uniseg v0.2.0
+github.com/rivo/uniseg
+# github.com/vishvananda/netlink v1.1.0
+## explicit
+github.com/vishvananda/netlink
+github.com/vishvananda/netlink/nl
+# github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
+## explicit
+github.com/vishvananda/netns
+# golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+## explicit
+golang.org/x/crypto/blake2b
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/curve25519/internal/field
+golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/nacl/box
+golang.org/x/crypto/nacl/secretbox
+golang.org/x/crypto/poly1305
+golang.org/x/crypto/salsa20/salsa
+# golang.org/x/net v0.0.0-20210610132358-84b48f89b13b
+## explicit
+golang.org/x/net/bpf
+golang.org/x/net/icmp
+golang.org/x/net/internal/iana
+golang.org/x/net/internal/socket
+golang.org/x/net/internal/socks
+golang.org/x/net/ipv4
+golang.org/x/net/ipv6
+golang.org/x/net/proxy
+# golang.org/x/sys v0.0.0-20210611083646-a4fc73990273
+## explicit
+golang.org/x/sys/cpu
+golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+golang.org/x/sys/windows/registry
+golang.org/x/sys/windows/svc
+golang.org/x/sys/windows/svc/mgr
+# golang.org/x/text v0.3.7-0.20210503195748-5c7c50ebbd4f
+## explicit
+golang.org/x/text/encoding
+golang.org/x/text/encoding/internal
+golang.org/x/text/encoding/internal/identifier
+golang.org/x/text/encoding/unicode
+golang.org/x/text/internal/utf8internal
+golang.org/x/text/runes
+golang.org/x/text/transform
+# golang.zx2c4.com/wireguard v0.0.0-20210604143328-f9b48a961cd2
+## explicit
+golang.zx2c4.com/wireguard/rwcancel
+golang.zx2c4.com/wireguard/tun
+golang.zx2c4.com/wireguard/tun/wintun
+golang.zx2c4.com/wireguard/tun/wintun/memmod
+# golang.zx2c4.com/wireguard/windows v0.3.14
+## explicit
+golang.zx2c4.com/wireguard/windows/elevate
+golang.zx2c4.com/wireguard/windows/tunnel/winipcfg
+golang.zx2c4.com/wireguard/windows/version

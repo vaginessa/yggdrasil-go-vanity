@@ -40,34 +40,59 @@ type Core struct {
 	ctxCancel    context.CancelFunc
 }
 
-func ParsePrivateKey(str string) (iwt.SecretKey, error) {
-	if strings.HasPrefix(str, "lr:") {
-		lr, err := hex.DecodeString(str)
+func ParseKeys(privateKey, publicKey string) (_ iwt.SecretKey, err error) {
+
+	var sk iwt.SecretKey
+
+	if strings.HasPrefix(privateKey, "lr:") {
+		var lr []byte
+		lr, err = hex.DecodeString(privateKey[len("lr:"):])
 		if err != nil {
-			return iwt.SecretKey{}, fmt.Errorf("error decoding PrivateKey: %w", err)
+			err = fmt.Errorf("error decoding PrivateKey: %w", err)
+			return
 		}
 		if len(lr) != 64 {
-			return iwt.SecretKey{}, errors.New("PrivateKey is incorrect length")
+			err = errors.New("PrivateKey has incorrect length")
+			return
 		}
-		sk, err := iwt.NewSecretKeyFromLR((*[64]byte)(lr))
+		sk, err = iwt.NewSecretKeyFromLR((*[64]byte)(lr))
 		if err != nil {
-			return iwt.SecretKey{}, fmt.Errorf("error parsing PrivateKey: %w", err)
+			err = fmt.Errorf("error parsing PrivateKey: %w", err)
+			return
 		}
-		return sk, nil
 	} else {
-		seedpk, err := hex.DecodeString(str)
+		var seedpk []byte
+		seedpk, err = hex.DecodeString(privateKey)
 		if err != nil {
-			return iwt.SecretKey{}, fmt.Errorf("error decoding PrivateKey: %w", err)
+			err = fmt.Errorf("error decoding PrivateKey: %w", err)
+			return
 		}
 		if len(seedpk) != 64 {
-			return iwt.SecretKey{}, errors.New("PrivateKey is incorrect length")
+			err = errors.New("PrivateKey has incorrect length")
+			return
 		}
-		sk, err := iwt.NewSecretKeyFromSeedPK((*[64]byte)(seedpk))
+		sk, err = iwt.NewSecretKeyFromSeedPK((*[64]byte)(seedpk))
 		if err != nil {
-			return iwt.SecretKey{}, fmt.Errorf("error parsing PrivateKey: %w", err)
+			err = fmt.Errorf("error parsing PrivateKey: %w", err)
+			return
 		}
-		return sk, nil
 	}
+
+	pk, err := hex.DecodeString(publicKey)
+	if err != nil {
+		err = fmt.Errorf("error decoding PublicKey: %w", err)
+		return
+	}
+	if len(pk) != 32 {
+		err = errors.New("PublicKey has incorrect length")
+		return
+	}
+	if !bytes.Equal(pk, sk.PK[:]) {
+		err = errors.New("PublicKey does not match PrivateKey")
+		return
+	}
+
+	return sk, nil
 }
 
 func (c *Core) _init() error {
@@ -82,20 +107,9 @@ func (c *Core) _init() error {
 	}
 
 	var err error
-	c.secKey, err = ParsePrivateKey(c.config.PrivateKey)
+	c.secKey, err = ParseKeys(c.config.PrivateKey, c.config.PublicKey)
 	if err != nil {
 		return err
-	}
-
-	pk, err := hex.DecodeString(c.config.PublicKey)
-	if err != nil {
-		return fmt.Errorf("error decoding PublicKey: %w", err)
-	}
-	if len(pk) != 32 {
-		return errors.New("PublicKey is incorrect length")
-	}
-	if !bytes.Equal(pk, c.secKey.PK[:]) {
-		return errors.New("PublicKey does not match PrivateKey")
 	}
 
 	c.PacketConn, err = iwe.NewPacketConn(c.secKey)

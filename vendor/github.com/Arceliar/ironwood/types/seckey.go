@@ -12,22 +12,28 @@ import (
 )
 
 type SecretKey struct {
-	L  edwards25519.Scalar
-	R  [32]byte
-	PK [32]byte
+	OrigL [32]byte            // edwards25519 messes stuff up so we need to keep original
+	l     edwards25519.Scalar // this is cached because convenient for sign
+	r     [32]byte            // right side of key
+	PK    [32]byte            // public key
 }
 
 func NewSecretKeyFromSeedPK(seedpk *[64]byte) (sk SecretKey, err error) {
 	h := sha512.Sum512(seedpk[:32])
+	h[0] &= 248
+	h[31] &= 63
+	h[31] |= 64
 	s, err := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
 	if err != nil {
 		return
 	}
+
 	A := new(edwards25519.Point).ScalarBaseMult(s)
 
 	// L|R|PK
-	sk.L = *s
-	copy(sk.R[:], h[32:])
+	sk.OrigL = *(*[32]byte)(h[:32])
+	sk.l = *s
+	copy(sk.r[:], h[32:])
 	copy(sk.PK[:], A.Bytes())
 
 	if !bytes.Equal(sk.PK[:], seedpk[32:]) {
@@ -37,23 +43,25 @@ func NewSecretKeyFromSeedPK(seedpk *[64]byte) (sk SecretKey, err error) {
 }
 
 func NewSecretKeyFromLR(lr *[64]byte) (sk SecretKey, err error) {
-	s, err := edwards25519.NewScalar().SetCanonicalBytes(lr[:32])
+	s, err := edwards25519.NewScalar().SetBytesWithClamping(lr[:32])
 	if err != nil {
 		return
 	}
+
 	A := new(edwards25519.Point).ScalarBaseMult(s)
 
 	// L|R|PK
-	sk.L = *s
-	copy(sk.R[:], lr[32:])
+	sk.OrigL = *(*[32]byte)(lr[:32])
+	sk.l = *s
+	copy(sk.r[:], lr[32:])
 	copy(sk.PK[:], A.Bytes())
 
 	return
 }
 
 func (sk *SecretKey) SignED25519(signature *[64]byte, message []byte) {
-	s := &sk.L
-	prefix := sk.R[:]
+	s := &sk.l
+	prefix := sk.r[:]
 
 	mh := sha512.New()
 	mh.Write(prefix)

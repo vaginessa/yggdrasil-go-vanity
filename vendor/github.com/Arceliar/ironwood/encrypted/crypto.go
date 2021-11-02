@@ -70,20 +70,6 @@ func (pub *edPub) toBox() (*boxPub, error) {
 	return &c, nil
 }
 
-func (priv *edPriv) toBox() *boxPriv {
-	var c boxPriv
-	e := e2c.Ed25519PrivateKeyToCurve25519(ed25519.PrivateKey(priv[:]))
-	copy(c[:], e)
-	return &c
-}
-
-func (priv *edPriv) pub() *edPub {
-	pk := ed25519.PrivateKey(priv[:]).Public().(ed25519.PublicKey)
-	pub := new(edPub)
-	copy(pub[:], pk[:])
-	return pub
-}
-
 func (sec *edSec) pub() *edPub {
 	pub := new(edPub)
 	copy(pub[:], sec.PK[:])
@@ -92,8 +78,7 @@ func (sec *edSec) pub() *edPub {
 
 func (sec *edSec) toBox() *boxPriv {
 	var c boxPriv
-	e := e2c.Ed25519SecretKeyLToCurve25519(&sec.L)
-	copy(c[:], e)
+	copy(c[:], sec.OrigL[:])
 	return &c
 }
 

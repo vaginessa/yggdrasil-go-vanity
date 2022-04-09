@@ -35,6 +35,8 @@ type dhtree struct {
 	btimer     *time.Timer            // time.AfterFunc to send bootstrap packets
 	stimer     *time.Timer            // time.AfterFunc for self/parent expiration
 	wait       bool                   // FIXME this shouldn't be needed
+	hseq       uint64                 // used to track the order treeInfo updates are handled
+	bwait      bool                   // wait before sending another bootstrap
 }
 
 type treeExpiredInfo struct {
@@ -77,6 +79,8 @@ func (t *dhtree) update(from phony.Actor, info *treeInfo, p *peer) {
 	t.Act(from, func() {
 		// The tree info should have been checked before this point
 		info.time = time.Now() // Order by processing time, not receiving time...
+		t.hseq++
+		info.hseq = t.hseq // Used to track order without comparing timestamps, since some platforms have *horrible* time resolution
 		if exp, isIn := t.expired[info.root]; !isIn || exp.seq < info.seq {
 			t.expired[info.root] = treeExpiredInfo{seq: info.seq, time: info.time}
 		}
@@ -93,7 +97,7 @@ func (t *dhtree) update(from phony.Actor, info *treeInfo, p *peer) {
 			var doWait bool
 			if treeLess(t.self.root, info.root) {
 				doWait = true // worse root
-			} else if info.root.equal(t.self.root) && info.seq == t.self.seq {
+			} else if info.root.equal(t.self.root) && info.seq <= t.self.seq {
 				doWait = true // same root and seq
 			}
 			t.self, t.parent = nil, nil // The old self/parent are now invalid
@@ -186,19 +190,8 @@ func (t *dhtree) _fix() {
 			t.self, t.parent = info, p
 		case info.seq < t.self.seq:
 			// This is an older sequnce number, so ignore it
-		case info.time.Before(t.self.time):
+		case info.hseq < t.self.hseq:
 			// This info has been around for longer (e.g. the path is more stable)
-			t.self, t.parent = info, p
-		case info.time.After(t.self.time):
-			// This info has been around for less time (e.g. the path is less stable)
-			// Note that everything after this is extremely unlikely to be reached...
-		case len(info.hops) < len(t.self.hops):
-			// This is a shorter path to the root
-			t.self, t.parent = info, p
-		case len(info.hops) > len(t.self.hops):
-			// This is a longer path to the root, so don't do anything
-		case treeLess(info.from(), t.self.from()):
-			// This peer has a higher key than our current parent
 			t.self, t.parent = info, p
 		}
 	}
@@ -299,7 +292,7 @@ func (t *dhtree) _dhtLookup(dest publicKey, isBootstrap bool) *peer {
 		for _, hop := range info.hops {
 			doCheckedUpdate(hop.next, p, nil) // updates if this hop is better
 			tinfo := t.tinfos[bestPeer]       // may be nil if we're in the middle of a remove
-			if tinfo != nil && best.equal(hop.next) && info.time.Before(tinfo.time) {
+			if tinfo != nil && best.equal(hop.next) && info.hseq < tinfo.hseq {
 				// This ancestor matches our current next hop, but this peer's treeInfo is better, so switch to it
 				doUpdate(hop.next, p, nil)
 			}
@@ -599,7 +592,9 @@ func (t *dhtree) _teardown(from *peer, teardown *dhtTeardown) {
 		}
 		if t.prev == dinfo {
 			t.prev = nil
-			t._doBootstrap()
+			// It's possible that other bad news is incoming
+			// Delay bootstrap until we've processed any other queued messages
+			t.Act(nil, t._doBootstrap)
 		}
 	}
 }
@@ -614,14 +609,23 @@ func (t *dhtree) teardown(from phony.Actor, p *peer, teardown *dhtTeardown) {
 // _doBootstrap decides whether or not to send a bootstrap packet
 // if a bootstrap is sent, then it sets things up to attempt to send another bootstrap at a later point
 func (t *dhtree) _doBootstrap() {
-	//return // FIXME debug tree (root offline -> too much traffic to fix)
-	if t.btimer != nil {
+	if !t.bwait && t.btimer != nil {
 		if t.prev != nil && t.prev.root.equal(t.self.root) && t.prev.rootSeq == t.self.seq {
 			return
 		}
-		t._handleBootstrap(t._newBootstrap())
+		if !t.self.root.equal(t.core.crypto.publicKey) {
+			t._handleBootstrap(t._newBootstrap())
+			// Don't immediately send more bootstraps if called again too quickly
+			// This helps prevent traffic spikes in some mobility scenarios
+			t.bwait = true
+		}
 		t.btimer.Stop()
-		t.btimer = time.AfterFunc(time.Second, func() { t.Act(nil, t._doBootstrap) })
+		t.btimer = time.AfterFunc(time.Second, func() {
+			t.Act(nil, func() {
+				t.bwait = false
+				t._doBootstrap()
+			})
+		})
 	}
 }
 
@@ -684,6 +688,7 @@ func (t *dhtree) _getToken(source publicKey) *dhtSetupToken {
 
 type treeInfo struct {
 	time time.Time // Note: *NOT* serialized
+	hseq uint64    // Note: *NOT* serialized, set when handling the update
 	root publicKey
 	seq  uint64
 	hops []treeHop
@@ -783,7 +788,7 @@ func (info *treeInfo) dist(dest *treeLabel) int {
 		}
 		lcaIdx = idx
 	}
-	return a + b - 2*lcaIdx
+	return a + b - 2*(lcaIdx+1)
 }
 
 func (info *treeInfo) encode(out []byte) ([]byte, error) {

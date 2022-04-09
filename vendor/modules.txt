@@ -1,5 +1,5 @@
 # github.com/Arceliar/ironwood v0.0.0-20211125050254-8951369625d0
-## explicit; go 1.15
+## explicit; go 1.17
 github.com/Arceliar/ironwood/encrypted
 github.com/Arceliar/ironwood/encrypted/internal/e2c
 github.com/Arceliar/ironwood/network

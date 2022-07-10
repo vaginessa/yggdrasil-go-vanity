@@ -1,6 +1,6 @@
 Usage:
 1. Generate desired key with [yggkeygen](https://github.com/cathugger/yggkeygen)
-2. Enter it into config, using "lr:" prefix for PrivateKey, such as:
+2. Enter it into config, using `lr:` prefix for PrivateKey, such as:
 ```
 PrivateKey: lr:50943DA584E9073A101B81D0868C4E1871A4875602AC03C018D7A483159AF672CEBD0EB4D16C7AEC9978B2E8FEEBB891CBE43B22EF6262A2B1AF0725C164E64D
 PublicKey: 00000000F13385238E2083615E333F629673225F9AD4E7D6366FE601E27BCD05

@@ -194,6 +194,7 @@ type yggArgs struct {
 	useconffile   string
 	logto         string
 	loglevel      string
+	chuser        string
 }
 
 func getArgs() yggArgs {
@@ -208,6 +209,7 @@ func getArgs() yggArgs {
 	getaddr := flag.Bool("address", false, "returns the IPv6 address as derived from the supplied configuration")
 	getsnet := flag.Bool("subnet", false, "returns the IPv6 subnet as derived from the supplied configuration")
 	loglevel := flag.String("loglevel", "info", "loglevel to enable")
+	chuser := flag.String("user", "", "user (and, optionally, group) to set UID/GID to")
 	flag.Parse()
 	return yggArgs{
 		genconf:       *genconf,
@@ -221,6 +223,7 @@ func getArgs() yggArgs {
 		getaddr:       *getaddr,
 		getsnet:       *getsnet,
 		loglevel:      *loglevel,
+		chuser:        *chuser,
 	}
 }
 
@@ -361,6 +364,13 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 		logger.Errorln("An error occurred starting TUN/TAP:", err)
 	}
 	n.tuntap.SetupAdminHandlers(n.admin)
+	// Change user if requested
+	if args.chuser != "" {
+		err = chuser(args.chuser)
+		if err != nil {
+			panic(err)
+		}
+	}
 	// Make some nice output that tells us what our IPv6 address and subnet are.
 	// This is just logged to stdout for the user.
 	address := n.core.Address()

@@ -1,5 +1,5 @@
 # github.com/Arceliar/ironwood v0.0.0-20220409035209-b7f71f05435a
-## explicit; go 1.17
+## explicit; go 1.15
 github.com/Arceliar/ironwood/encrypted
 github.com/Arceliar/ironwood/encrypted/internal/e2c
 github.com/Arceliar/ironwood/network
@@ -82,7 +82,7 @@ golang.org/x/net/internal/socks
 golang.org/x/net/ipv4
 golang.org/x/net/ipv6
 golang.org/x/net/proxy
-# golang.org/x/sys v0.0.0-20211102192858-4dd72447c267
+# golang.org/x/sys v0.1.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs

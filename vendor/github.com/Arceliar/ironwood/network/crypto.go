@@ -17,15 +17,15 @@ type privateKey [privateKeySize]byte
 type signature [signatureSize]byte
 
 type crypto struct {
-	secretKey types.SecretKey
-	publicKey publicKey
+	privateKey privateKey
+	publicKey  publicKey
 }
 
-func sign(key *types.SecretKey, message []byte) (sig signature) {
-	var tmp [64]byte
-	key.SignED25519(&tmp, message)
-	copy(sig[:], tmp[:])
-	return
+func (key *privateKey) sign(message []byte) signature {
+	var sig signature
+	tmp := ed25519.Sign(ed25519.PrivateKey(key[:]), message)
+	copy(sig[:], tmp)
+	return sig
 }
 
 func (key privateKey) equal(comparedKey privateKey) bool {
@@ -44,7 +44,7 @@ func (key publicKey) addr() types.Addr {
 	return types.Addr(key[:])
 }
 
-func (c *crypto) init(secret types.SecretKey) {
-	c.secretKey = secret
-	copy(c.publicKey[:], secret.PK[:])
+func (c *crypto) init(secret ed25519.PrivateKey) {
+	copy(c.privateKey[:], secret)
+	copy(c.publicKey[:], secret.Public().(ed25519.PublicKey))
 }

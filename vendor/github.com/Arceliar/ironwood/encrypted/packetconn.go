@@ -1,6 +1,7 @@
 package encrypted
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"net"
 
@@ -13,7 +14,7 @@ import (
 type PacketConn struct {
 	actor phony.Inbox
 	*network.PacketConn
-	secretEd  edSec
+	secretEd  edPriv
 	secretBox boxPriv
 	sessions  sessionManager
 	network   netManager
@@ -21,13 +22,13 @@ type PacketConn struct {
 }
 
 // NewPacketConn returns a *PacketConn struct which implements the types.PacketConn interface.
-func NewPacketConn(secret types.SecretKey) (*PacketConn, error) {
+func NewPacketConn(secret ed25519.PrivateKey) (*PacketConn, error) {
 	npc, err := network.NewPacketConn(secret)
 	if err != nil {
 		return nil, err
 	}
 	pc := &PacketConn{PacketConn: npc}
-	pc.secretEd = edSec(secret)
+	copy(pc.secretEd[:], secret[:])
 	pc.secretBox = *pc.secretEd.toBox()
 	pc.sessions.init(pc)
 	pc.network.init(pc)

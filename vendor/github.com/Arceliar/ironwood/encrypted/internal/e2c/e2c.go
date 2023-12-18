@@ -10,16 +10,46 @@ package e2c
 
 import (
 	"crypto/ed25519"
+	"crypto/sha512"
+	"math/big"
 
-	"filippo.io/edwards25519"
+	"golang.org/x/crypto/curve25519"
 )
 
-func Ed25519PublicKeyToCurve25519(pk ed25519.PublicKey) ([]byte, error) {
-	// See https://blog.filippo.io/using-ed25519-keys-for-encryption and
-	// https://pkg.go.dev/filippo.io/edwards25519#Point.BytesMontgomery.
-	p, err := new(edwards25519.Point).SetBytes(pk)
-	if err != nil {
-		return nil, err
+var curve25519P, _ = new(big.Int).SetString("57896044618658097711785492504343953926634992332820282019728792003956564819949", 10)
+
+func Ed25519PrivateKeyToCurve25519(pk ed25519.PrivateKey) []byte {
+	h := sha512.New()
+	h.Write(pk.Seed())
+	out := h.Sum(nil)
+	return out[:curve25519.ScalarSize]
+}
+
+func Ed25519PublicKeyToCurve25519(pk ed25519.PublicKey) []byte {
+	// ed25519.PublicKey is a little endian representation of the y-coordinate,
+	// with the most significant bit set based on the sign of the x-coordinate.
+	bigEndianY := make([]byte, ed25519.PublicKeySize)
+	for i, b := range pk {
+		bigEndianY[ed25519.PublicKeySize-i-1] = b
 	}
-	return p.BytesMontgomery(), nil
+	bigEndianY[0] &= 0b0111_1111
+
+	// The Montgomery u-coordinate is derived through the bilinear map
+	//
+	//     u = (1 + y) / (1 - y)
+	//
+	// See https://blog.filippo.io/using-ed25519-keys-for-encryption.
+	y := new(big.Int).SetBytes(bigEndianY)
+	denom := big.NewInt(1)
+	denom.ModInverse(denom.Sub(denom, y), curve25519P) // 1 / (1 - y)
+	u := y.Mul(y.Add(y, big.NewInt(1)), denom)
+	u.Mod(u, curve25519P)
+
+	out := make([]byte, curve25519.PointSize)
+	uBytes := u.Bytes()
+	for i, b := range uBytes {
+		out[len(uBytes)-i-1] = b
+	}
+
+	return out
 }

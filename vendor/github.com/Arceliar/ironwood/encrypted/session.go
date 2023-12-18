@@ -444,7 +444,7 @@ func newSessionInit(current, next *boxPub, keySeq uint64) sessionInit {
 	return init
 }
 
-func (init *sessionInit) encrypt(from *edSec, to *edPub) ([]byte, error) {
+func (init *sessionInit) encrypt(from *edPriv, to *edPub) ([]byte, error) {
 	fromPub, fromPriv := newBoxKeys()
 	var toBox *boxPub
 	var err error
@@ -522,7 +522,7 @@ type sessionAck struct {
 	sessionInit
 }
 
-func (ack *sessionAck) encrypt(from *edSec, to *edPub) ([]byte, error) {
+func (ack *sessionAck) encrypt(from *edPriv, to *edPub) ([]byte, error) {
 	data, err := ack.sessionInit.encrypt(from, to)
 	if err == nil {
 		data[0] = sessionTypeAck
